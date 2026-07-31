@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ST4R DATABASE // LIVE GRIMOIRE</title>
+    <style>
+        /* ==========================================
+           ANALOG HORROR / ST4R ARCHIVE AESTHETIC
+           ========================================== */
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+        body {
+            background-color: #050505;
+            color: #ff3333;
+            font-family: 'VT323', monospace;
+            margin: 0;
+            padding: 20px;
+            text-transform: uppercase;
+            overflow-x: hidden;
+        }
+
+        /* CRT Scanline overlay */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 99;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 3em;
+            text-shadow: 2px 0px 5px #ff0000;
+            border-bottom: 2px solid #ff3333;
+            padding-bottom: 10px;
+            letter-spacing: 5px;
+        }
+
+        #loading-msg {
+            text-align: center;
+            font-size: 2em;
+            margin-top: 50px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .element-section { margin-bottom: 50px; position: relative; z-index: 3; }
+        .element-title { font-size: 2em; margin-bottom: 20px; text-shadow: 0 0 10px; }
+
+        /* Grid layout for the spells */
+        .spell-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .spell-card {
+            border: 1px solid #333;
+            padding: 15px;
+            background: rgba(10, 10, 10, 0.9);
+            text-align: center;
+            transition: 0.3s;
+            position: relative;
+        }
+
+        .spell-card:hover {
+            border-color: #ffffff;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            transform: scale(1.02);
+        }
+
+        .spell-level { color: #888; font-size: 1.2em; position: absolute; top: 5px; left: 10px; }
+        .spell-name { font-size: 1.5em; margin: 10px 0; font-weight: bold; color: #eee;}
+        .spell-sequence { font-size: 0.8em; color: #666; letter-spacing: 2px; }
+
+        /* SVG Rune Styling */
+        .rune-svg {
+            width: 120px;
+            height: 120px;
+            margin: 15px auto;
+            display: block;
+            filter: drop-shadow(0px 0px 8px currentColor);
+        }
+
+        /* Element specific colors */
+        .fire { color: #ff5500; }
+        .water { color: #00aaff; }
+        .earth { color: #aa7744; }
+        .wind { color: #55ffcc; }
+    </style>
+</head>
+<body>
+
+    <h1>ST4R ARCHIVE // LIVE GRIMOIRE</h1>
+    <div id="loading-msg">> ESTABLISHING UPLINK...</div>
+    <div id="grimoire-container"></div>
+
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
+    <!-- Firebase Realtime Database SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-database-compat.js"></script>
+
+    <script>
+        // ==========================================
+        // 1. FIREBASE CONFIGURATION
+        // ==========================================
+        // Replace these values with your actual project config from the Firebase Console
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY_HERE",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // ==========================================
+        // 2. THE JAVASCRIPT RUNE GENERATOR
+        // ==========================================
+        // Translates "U-R-D-L" strings into SVG pictures!
+        function generateRuneSVG(sequence) {
+            const moves = sequence.split('-');
+            let currentX = 50; 
+            let currentY = 50;
+            const step = 25; 
+            let svgPath = `M ${currentX} ${currentY} `;
+
+            moves.forEach(move => {
+                if (move.includes('U')) currentY -= step;
+                if (move.includes('D')) currentY += step;
+                if (move.includes('L')) currentX -= step;
+                if (move.includes('R')) currentX += step;
+                svgPath += `L ${currentX} ${currentY} `;
+            });
+
+            return `<svg viewBox="0 0 100 100" class="rune-svg">
+                        <path d="${svgPath}" stroke="currentColor" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>`;
+        }
+
+        // ==========================================
+        // 3. FETCH DATA AND RENDER
+        // ==========================================
+        const container = document.getElementById('grimoire-container');
+        const loadingMsg = document.getElementById('loading-msg');
+        const elementsOrder = ['fire', 'water', 'earth', 'wind'];
+
+        // Listen for data from Firebase (Realtime updates!)
+        database.ref('spellDatabase').on('value', (snapshot) => {
+            const spellDB = snapshot.val();
+            
+            if (!spellDB) {
+                loadingMsg.innerHTML = "❌ ERR: SPELL_DATABASE NOT FOUND";
+                return;
+            }
+
+            // Clear loading/previous content
+            loadingMsg.style.display = 'none';
+            container.innerHTML = '';
+
+            // Group spells by element
+            const groupedSpells = { fire: [], water: [], earth: [], wind: [] };
+            for (const name in spellDB) {
+                const spellData = spellDB[name];
+                spellData.name = name; // add name into the data object
+                if (groupedSpells[spellData.element]) {
+                    groupedSpells[spellData.element].push(spellData);
+                }
+            }
+
+            // Render each elemental section
+            elementsOrder.forEach(element => {
+                const spells = groupedSpells[element];
+                if (spells.length === 0) return;
+
+                // Sort by level
+                spells.sort((a, b) => a.level - b.level);
+
+                const section = document.createElement('div');
+                section.className = 'element-section';
+                
+                section.innerHTML = `<div class="element-title ${element}">// ${element.toUpperCase()} ENTITIES</div>`;
+
+                const grid = document.createElement('div');
+                grid.className = 'spell-grid';
+
+                spells.forEach(spell => {
+                    const card = document.createElement('div');
+                    card.className = `spell-card ${element}`;
+                    card.innerHTML = `
+                        <div class="spell-level">LVL ${spell.level}</div>
+                        ${generateRuneSVG(spell.sequence)}
+                        <div class="spell-name">${spell.name}</div>
+                        <div class="spell-sequence">[ ${spell.sequence} ]</div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+            
+            container.innerHTML += `<div style="color:#333; text-align:center; margin-top:20px">>> DATA SYNC COMPLETE // END OF LOG</div>`;
+        });
+    </script>
+</body>
+</html>
