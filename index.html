@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
-    <title>ST4R DATABASE // LIVE GRIMOIRE</title>
+    <title>ST4R ARCHIVE // LIVE GRIMOIRE</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
@@ -99,10 +98,11 @@
     <div id="loading-msg">> ESTABLISHING UPLINK...</div>
     <div id="grimoire-container"></div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-database-compat.js"></script>
+    <!-- MODERN MODULAR FIREBASE SCRIPT (Bypasses 'eval' security blocks) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
 
-    <script>
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY_HERE",
             authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -113,35 +113,14 @@
             appId: "YOUR_APP_ID"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-
-        function generateRuneSVG(sequence) {
-            if (!sequence) sequence = "U";
-            const moves = sequence.split('-');
-            let currentX = 50; 
-            let currentY = 50;
-            const step = 25; 
-            let svgPath = `M ${currentX} ${currentY} `;
-
-            moves.forEach(move => {
-                if (move.includes('U')) currentY -= step;
-                if (move.includes('D')) currentY += step;
-                if (move.includes('L')) currentX -= step;
-                if (move.includes('R')) currentX += step;
-                svgPath += `L ${currentX} ${currentY} `;
-            });
-
-            return `<svg viewBox="0 0 100 100" class="rune-svg">
-                        <path d="${svgPath}" stroke="currentColor" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>`;
-        }
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
         const container = document.getElementById('grimoire-container');
         const loadingMsg = document.getElementById('loading-msg');
         const elementsOrder = ['fire', 'water', 'earth', 'wind'];
 
-        database.ref('spellDatabase').on('value', (snapshot) => {
+        onValue(ref(db, 'spellDatabase'), (snapshot) => {
             const spellDB = snapshot.val();
             
             if (!spellDB) {
@@ -192,6 +171,27 @@
             
             container.innerHTML += `<div style="color:#444; text-align:center; margin-top:30px; letter-spacing:2px;">>> DATA SYNC ACTIVE // END OF LOG</div>`;
         });
+
+        function generateRuneSVG(sequence) {
+            if (!sequence) sequence = "U";
+            const moves = sequence.split('-');
+            let currentX = 50; 
+            let currentY = 50;
+            const step = 25; 
+            let svgPath = `M ${currentX} ${currentY} `;
+
+            moves.forEach(move => {
+                if (move.includes('U')) currentY -= step;
+                if (move.includes('D')) currentY += step;
+                if (move.includes('L')) currentX -= step;
+                if (move.includes('R')) currentX += step;
+                svgPath += `L ${currentX} ${currentY} `;
+            });
+
+            return `<svg viewBox="0 0 100 100" class="rune-svg">
+                        <path d="${svgPath}" stroke="currentColor" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>`;
+        }
     </script>
 </body>
 </html>
