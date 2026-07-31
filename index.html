@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
     <title>ST4R DATABASE // LIVE GRIMOIRE</title>
     <style>
-        /* ==========================================
-           ANALOG HORROR / ST4R ARCHIVE AESTHETIC
-           ========================================== */
         @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
         body {
@@ -20,7 +18,6 @@
             overflow-x: hidden;
         }
 
-        /* CRT Scanline overlay */
         body::before {
             content: " ";
             display: block;
@@ -57,7 +54,6 @@
         .element-section { margin-bottom: 50px; position: relative; z-index: 3; }
         .element-title { font-size: 2em; margin-bottom: 20px; text-shadow: 0 0 10px; }
 
-        /* Grid layout for the spells */
         .spell-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -83,7 +79,6 @@
         .spell-name { font-size: 1.5em; margin: 10px 0; font-weight: bold; color: #eee;}
         .spell-sequence { font-size: 0.8em; color: #666; letter-spacing: 2px; }
 
-        /* SVG Rune Styling */
         .rune-svg {
             width: 120px;
             height: 120px;
@@ -92,7 +87,6 @@
             filter: drop-shadow(0px 0px 8px currentColor);
         }
 
-        /* Element specific colors */
         .fire { color: #ff5500; }
         .water { color: #00aaff; }
         .earth { color: #aa7744; }
@@ -105,16 +99,10 @@
     <div id="loading-msg">> ESTABLISHING UPLINK...</div>
     <div id="grimoire-container"></div>
 
-    <!-- Firebase App (the core Firebase SDK) -->
     <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
-    <!-- Firebase Realtime Database SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-database-compat.js"></script>
 
     <script>
-        // ==========================================
-        // 1. FIREBASE CONFIGURATION
-        // ==========================================
-        // Replace these values with your actual project config from the Firebase Console
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY_HERE",
             authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -125,15 +113,11 @@
             appId: "YOUR_APP_ID"
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // ==========================================
-        // 2. THE JAVASCRIPT RUNE GENERATOR
-        // ==========================================
-        // Translates "U-R-D-L" strings into SVG pictures!
         function generateRuneSVG(sequence) {
+            if (!sequence) sequence = "U";
             const moves = sequence.split('-');
             let currentX = 50; 
             let currentY = 50;
@@ -153,47 +137,38 @@
                     </svg>`;
         }
 
-        // ==========================================
-        // 3. FETCH DATA AND RENDER
-        // ==========================================
         const container = document.getElementById('grimoire-container');
         const loadingMsg = document.getElementById('loading-msg');
         const elementsOrder = ['fire', 'water', 'earth', 'wind'];
 
-        // Listen for data from Firebase (Realtime updates!)
         database.ref('spellDatabase').on('value', (snapshot) => {
             const spellDB = snapshot.val();
             
             if (!spellDB) {
-                loadingMsg.innerHTML = "❌ ERR: SPELL_DATABASE NOT FOUND";
+                loadingMsg.innerHTML = "❌ ERR: SPELL_DATABASE NODE MISSING";
                 return;
             }
 
-            // Clear loading/previous content
             loadingMsg.style.display = 'none';
             container.innerHTML = '';
 
-            // Group spells by element
             const groupedSpells = { fire: [], water: [], earth: [], wind: [] };
             for (const name in spellDB) {
                 const spellData = spellDB[name];
-                spellData.name = name; // add name into the data object
+                spellData.name = name;
                 if (groupedSpells[spellData.element]) {
                     groupedSpells[spellData.element].push(spellData);
                 }
             }
 
-            // Render each elemental section
             elementsOrder.forEach(element => {
                 const spells = groupedSpells[element];
                 if (spells.length === 0) return;
 
-                // Sort by level
                 spells.sort((a, b) => a.level - b.level);
 
                 const section = document.createElement('div');
                 section.className = 'element-section';
-                
                 section.innerHTML = `<div class="element-title ${element}">// ${element.toUpperCase()} ENTITIES</div>`;
 
                 const grid = document.createElement('div');
@@ -206,7 +181,7 @@
                         <div class="spell-level">LVL ${spell.level}</div>
                         ${generateRuneSVG(spell.sequence)}
                         <div class="spell-name">${spell.name}</div>
-                        <div class="spell-sequence">[ ${spell.sequence} ]</div>
+                        <div class="spell-sequence">[ ${spell.sequence || 'U'} ]</div>
                     `;
                     grid.appendChild(card);
                 });
@@ -215,7 +190,7 @@
                 container.appendChild(section);
             });
             
-            container.innerHTML += `<div style="color:#333; text-align:center; margin-top:20px">>> DATA SYNC COMPLETE // END OF LOG</div>`;
+            container.innerHTML += `<div style="color:#444; text-align:center; margin-top:30px; letter-spacing:2px;">>> DATA SYNC ACTIVE // END OF LOG</div>`;
         });
     </script>
 </body>
